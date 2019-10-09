@@ -2,11 +2,20 @@ import pandas as pd
 from pandas import ExcelWriter
 from pandas import ExcelFile
 from datetime import date
+import re
+
+
 
 
 
 def run():
     pass
+
+
+def handle_single_training_line(line):
+    regex_decide_intervals_or_still = ""
+    match = re.search(regex_decide_intervals_or_still,line, re.I)
+
 
 
 def process_excel_file():
