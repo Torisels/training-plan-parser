@@ -3,8 +3,14 @@ from pandas import ExcelWriter
 from pandas import ExcelFile
 from datetime import date
 import re
+import generate_xml as generator
 
-
+#Test workout generator
+OUTPUT_FILENAME = "test_workout_file"
+WORKOUT_NAME = "Czwartek 60m"
+PARAMETERS_DICT = [["Steady","1200","0.55","0"],
+                   ["Intervals","5","120","120","0.55","0.5","110","92"],
+                   ["Steady","1200","0.50","93"]]
 
 
 
@@ -36,4 +42,5 @@ def process_excel_file():
 
 
 if __name__ == '__main__':
-    process_excel_file()
+    content = generator.generate_workout_file(OUTPUT_FILENAME,WORKOUT_NAME,PARAMETERS_DICT)
+    print(content)
