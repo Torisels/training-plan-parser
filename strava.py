@@ -7,4 +7,5 @@ def list_activities():
                             headers={'Authorization': 'Bearer '.join(config.strava_config["token"])})
     print(response.json())
 
+list_activities()
 
