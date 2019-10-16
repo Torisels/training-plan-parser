@@ -1,19 +1,21 @@
 import xml.etree.ElementTree as E
-from config import config
+from config import zwift_config as zc
 
 WORKOUT_TYPE_INTERVAL = 'Intervals'
 WORKOUT_TYPE_STEADY = 'Steady'
 
-PACE = config["pace"]
+PACE = zc["Pace"]
 OVER_UNDER = "1"
 
 
-def generate_workout_segment_dictionary_steady(input_list):
-    # Duration, Power, Cadence
-    if input_list[2] == "0":
-        return dict(Duration=input_list[0], Power=input_list[1], pace=PACE)
-    else:
-        return dict(Duration=input_list[0], Power=input_list[1], pace=PACE, Cadence=input_list[2])
+def generate_workout_segment_dictionary_steady(input_dict):
+    ret_dict = dict(Duration=input_dict["Duration"], Power=input_dict["Power"], Pace=PACE)
+    try:
+        ret_dict["Cadence"] = input_dict["Cadence"]
+    except KeyError:
+        print("No cadence in still training")
+    return ret_dict
+
 
 
 def generate_workout_segment_dictionary_intervals(input_list):
@@ -27,8 +29,8 @@ def generate_workout_segment_dictionary_intervals(input_list):
     return return_dict
 
 
-def generate_workout_file(output_filename, workout_name, parameters_list, description="", author=config['author'],
-                          sportType=config['sportType']):
+def generate_workout_file(output_filename, workout_name, list_of_parameters_dictionaries, description="", author=zc['author'],
+                          sport_type=zc['sportType'],custom_tags_dict = None):
     workout_file = E.Element("workout_file")
 
     author_field = E.SubElement(workout_file, "author")
@@ -41,24 +43,24 @@ def generate_workout_file(output_filename, workout_name, parameters_list, descri
     description_field.text = description
 
     sport_type_field = E.SubElement(workout_file, "sportType")
-    sport_type_field.text = sportType
+    sport_type_field.text = sport_type
 
     tags_field = E.SubElement(workout_file, "tags")
     E.SubElement(tags_field, "tag", {'name': "Created by Python generator"})
+    try:
+        E.SubElement(tags_field, 'tag',custom_tags_dict)
+    except TypeError:
+        print("No custom_tags_dict")
 
     workout_field = E.SubElement(workout_file, "workout")
-
-    added_tag_field = 0
-    for sub_list in parameters_list:
-
-        if sub_list[0] == WORKOUT_TYPE_STEADY:
-            sub_list.pop(0)
-            E.SubElement(workout_field, "SteadyState", generate_workout_segment_dictionary_steady(sub_list))
-        elif sub_list[0] == WORKOUT_TYPE_INTERVAL:
-            sub_list.pop(0)
-            E.SubElement(workout_field, "IntervalsT", generate_workout_segment_dictionary_intervals(sub_list))
-            if added_tag_field == 0:
+    if_added_interval_tag_field = False
+    for sub_dict in list_of_parameters_dictionaries:
+        if sub_dict["type"] == WORKOUT_TYPE_STEADY:
+            E.SubElement(workout_field, "SteadyState", generate_workout_segment_dictionary_steady(sub_dict))
+        elif sub_dict[0] == WORKOUT_TYPE_INTERVAL:
+            E.SubElement(workout_field, "IntervalsT", generate_workout_segment_dictionary_intervals(sub_dict))
+            if if_added_interval_tag_field is False:
                 tag_field = E.SubElement(tags_field, "tag", {'name': "INTERVALS"})
-                added_tag_field = 1
+                if_added_interval_tag_field = True
     E.ElementTree(workout_file).write(output_filename, "utf-8")
     return E.tostring(workout_file)
