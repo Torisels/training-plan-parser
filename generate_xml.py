@@ -29,8 +29,8 @@ def generate_workout_segment_dictionary_intervals(input_list):
     return return_dict
 
 
-def generate_workout_file(output_filename, workout_name, list_of_parameters_dictionaries, description="", author=zc['author'],
-                          sport_type=zc['sportType'],custom_tags_dict = None):
+def generate_workout_file(output_filename, workout_name, list_of_parameters_dictionaries, description="", author=zc['Author'],
+                          sport_type=zc['Sport_type'],custom_tags_dict = None):
     workout_file = E.Element("workout_file")
 
     author_field = E.SubElement(workout_file, "author")
