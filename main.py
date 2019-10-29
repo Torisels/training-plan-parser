@@ -3,14 +3,14 @@
 # from pandas import ExcelFile
 # from datetime import date
 # import re
-# import generate_xml as generator
+import generate_xml as generator
+
 #
 # #Test workout generator
 # OUTPUT_FILENAME = "test_workout_file"
 # WORKOUT_NAME = "Czwartek 60m"
-# PARAMETERS_DICT = [["Steady","1200","0.55","0"],
-#                    ["Intervals","5","120","120","0.55","0.5","110","92"],
-#                    ["Steady","1200","0.50","93"]]
+PARAMETERS_DICT_LIST = [dict(type=generator.WORKOUT_TYPE_STEADY, Duration="1200", Power="0.6")]
+ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
 #
 #
 #
@@ -41,8 +41,6 @@
 #
 #
 #
-# if __name__ == '__main__':
-#     content = generator.generate_workout_file(OUTPUT_FILENAME,WORKOUT_NAME,PARAMETERS_DICT)
-#     print(content)
-
-
+if __name__ == '__main__':
+    content = generator.generate_workout_file(ZWIFT_PATH+"wtorek-60m.zwo", "2Strefa", PARAMETERS_DICT_LIST)
+    print(content)

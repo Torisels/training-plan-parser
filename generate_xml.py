@@ -17,7 +17,6 @@ def generate_workout_segment_dictionary_steady(input_dict):
     return ret_dict
 
 
-
 def generate_workout_segment_dictionary_intervals(input_list):
     # Repeat, First interval duration, Second interval duration, FI power, SI power, FI Cadence, SI Cadence
     return_dict = dict(Repeat=input_list[0], OnDuration=input_list[1], OffDuration=input_list[2], OnPower=input_list[3],
