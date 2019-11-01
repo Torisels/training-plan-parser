@@ -1,4 +1,4 @@
-import generate_xml as gx
+import zwift_generator as gx
 
 
 class TestClass:
