@@ -2,15 +2,18 @@
 # from pandas import ExcelWriter
 # from pandas import ExcelFile
 # from datetime import date
-# import re
-import zwift_generator as generator
+import re
+import pathlib
+import os.path
+from os import path
+from zwift_generator import ZwiftGenerator as ZG
 
 #
 # #Test workout generator
-# OUTPUT_FILENAME = "test_workout_file"
-# WORKOUT_NAME = "Czwartek 60m"
-# PARAMETERS_DICT_LIST = [dict(type=generator.WORKOUT_TYPE_STEADY, Duration="1200", Power="0.6")]
-# ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
+OUTPUT_FILENAME = "sat_test.zwo"
+WORKOUT_NAME = "Saturday_test"
+PARAMETERS_DICT_LIST = [dict(type=ZG.WORKOUT_TYPE_STEADY, Duration="1200", Power="0.6", Cadence="90-95")]
+ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
 #
 #
 #
@@ -42,4 +45,12 @@ import zwift_generator as generator
 #
 #
 if __name__ == '__main__':
-    print("a,bc".split(","))
+    zwift_gen = ZG(workout_type=ZG.WORKOUT_TYPE_STEADY, zwift_path=ZWIFT_PATH)
+    print(zwift_gen.generate_workout_file(ZWIFT_PATH + OUTPUT_FILENAME, WORKOUT_NAME, PARAMETERS_DICT_LIST))
+    # regex = r"((<workout_file>)|(<\/.*?>)|(<\w*?\s\/>))"
+    #
+    # test_str = "<workout_file><author>Gustaw D.</author><name>Test_String</name><description /><sportType>bike</sportType><tags><tag name=\"Created by Python generator by @Torisels\" /></tags><workout><SteadyState Cadence=\"92\" Duration=\"1200\" Pace=\"0\" Power=\"0.6\" /></workout></workout_file>"
+    # p = re.compile(regex)
+    # print(p.sub(r'\g<1>\n', test_str))
+    # path = pathlib.Path(ZWIFT_PATH)
+    # print(path.is_dir())

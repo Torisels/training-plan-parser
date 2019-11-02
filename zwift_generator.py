@@ -1,7 +1,9 @@
-import xml.etree.ElementTree as E
-from config import config as zc
+import xml.etree.ElementTree as ElmntTree
 import math
 import enum
+import re
+import pathlib
+
 
 
 class CadenceModes(enum.Enum):
@@ -19,17 +21,23 @@ class ZwiftGenerator:
     AUTHOR = "Gustaw D."
     SPORT_TYPE = "bike"
 
-    def __init__(self, workout_type, cadence_mode=CadenceModes.Round_Floor):
+    def __init__(self, workout_type, zwift_path, cadence_mode=CadenceModes.Round_Floor):
         self.workout_type = workout_type
         self.default_cadence_mode = cadence_mode
+        self.zwift_path = zwift_path
+        if self.check_if_path_exists() is False:
+            raise FileNotFoundError("Please specify correct Zwift Path")
+
+    def check_if_path_exists(self):
+        return pathlib.Path(self.zwift_path).is_dir()
 
     def handle_cadence(self, cadence_str, mode):
         if mode is None:
             mode = self.default_cadence_mode
         if "-" in cadence_str:
             cadences = cadence_str.split("-")
-            lower = cadences[0]
-            higher = cadences[1]
+            lower = int(cadences[0])
+            higher = int(cadences[1])
             if mode is CadenceModes.Higher:
                 return higher
             elif mode is CadenceModes.Lower:
@@ -39,64 +47,77 @@ class ZwiftGenerator:
             return math.ceil((lower + higher) / 2)
         return int(cadence_str)
 
-    def generate_workout_segment_dictionary_steady(self, input_dict):
+    def process_steady_block(self, input_dict):
         ret_dict = dict(Duration=input_dict["Duration"], Power=input_dict["Power"], Pace=self.PACE)
         try:
             cadence = input_dict["Cadence"]
             cadence_mode = None
             if "Cadence_mode" in input_dict:
                 cadence_mode = input_dict["Cadence_mode"]
-            ret_dict["Cadence"] = self.handle_cadence(cadence, cadence_mode)
+            ret_dict["Cadence"] = str(self.handle_cadence(cadence, cadence_mode))
         except KeyError:
             print("No cadence in still training")
         return ret_dict
 
-    # def generate_workout_segment_dictionary_intervals(input_list):
-    #     # Repeat, First interval duration, Second interval duration, FI power, SI power, FI Cadence, SI Cadence
-    #     return_dict = dict(Repeat=input_list[0], OnDuration=input_list[1], OffDuration=input_list[2],
-    #                        OnPower=input_list[3],
-    #                        OffPower=input_list[4], Pace=PACE, OverUnder=OVER_UNDER)
-    #     if input_list[4] is not "0":
-    #         return_dict["Cadence"] = input_list[5]
-    #     if input_list[5] is not "0":
-    #         return_dict["CadenceResting"] = input_list[6]
-    #     return return_dict
+    def process_interval_block(self, input_dict):
+        # Repeat, First interval duration, Second interval duration, FI power, SI power, FI Cadence, SI Cadence
+        return_dict = dict(Repeat=input_dict["Repeat"], OnDuration=input_dict["F_Duration"],
+                           OffDuration=input_dict["S_Duration"],
+                           OnPower=input_dict["F_Power"], OffPower=input_dict["S_Power"],
+                           Pace=self.PACE, OverUnder=self.OVER_UNDER)
+
+        f_cadence_mode = input_dict["F_Cadence_Mode"] if "F_Cadence_Mode" in input_dict else None
+        s_cadence_mode = input_dict["S_Cadence_Mode"] if "S_Cadence_Mode" in input_dict else None
+
+        if "F_Cadence" in input_dict:
+            return_dict["Cadence"] = str(self.handle_cadence(input_dict["F_Cadence"], f_cadence_mode))
+        if "S_Cadence" in input_dict:
+            return_dict["CadenceResting"] = str(self.handle_cadence(input_dict["S_Cadence"], s_cadence_mode))
+        return return_dict
 
     def generate_workout_file(self, output_filename, workout_name, workout_dicts, description="",
                               custom_tags_dict=None):
         # main element
-        workout_file = E.Element("workout_file")
+        workout_file = ElmntTree.Element("workout_file")
         # author field
-        author_field = E.SubElement(workout_file, "author")
+        author_field = ElmntTree.SubElement(workout_file, "author")
         author_field.text = self.AUTHOR
         # workout name field
-        workout_name_field = E.SubElement(workout_file, "name")
+        workout_name_field = ElmntTree.SubElement(workout_file, "name")
         workout_name_field.text = workout_name
         # description of the workout
-        description_field = E.SubElement(workout_file, "description")
+        description_field = ElmntTree.SubElement(workout_file, "description")
         description_field.text = description
         # sport type: bike or run
-        sport_type_field = E.SubElement(workout_file, "sportType")
+        sport_type_field = ElmntTree.SubElement(workout_file, "sportType")
         sport_type_field.text = self.SPORT_TYPE
         # custom tags
-        tags_field = E.SubElement(workout_file, "tags")
-        E.SubElement(tags_field, "tag", {'name': "Created by Python generator by @Torisels"})
+        tags_field = ElmntTree.SubElement(workout_file, "tags")
+        ElmntTree.SubElement(tags_field, "tag", {'name': "Created by Python generator by @Torisels"})
         if self.workout_type == self.WORKOUT_TYPE_INTERVAL:
-            E.SubElement(tags_field, "tag", {'name': "Intervals"})
+            ElmntTree.SubElement(tags_field, "tag", {'name': "Intervals"})
 
         try:
-            E.SubElement(tags_field, 'tag', custom_tags_dict)
+            ElmntTree.SubElement(tags_field, 'tag', custom_tags_dict)
         except TypeError:
             print("No custom_tags_dict")
 
-        workout_field = E.SubElement(workout_file, "workout")
+        workout_field = ElmntTree.SubElement(workout_file, "workout")
 
-        for segment_dict in workout_dicts:
-            if segment_dict["type"] == self.WORKOUT_TYPE_STEADY:
-                E.SubElement(workout_field, "SteadyState",
-                             self.generate_workout_segment_dictionary_steady(segment_dict))
-            elif segment_dict["type"] == self.WORKOUT_TYPE_INTERVAL:
-                E.SubElement(workout_field, "IntervalsT", generate_workout_segment_dictionary_intervals(segment_dict))
+        for block_dict in workout_dicts:
+            if block_dict["type"] == self.WORKOUT_TYPE_STEADY:
+                ElmntTree.SubElement(workout_field, "SteadyState",
+                                     self.process_steady_block(block_dict))
+            elif block_dict["type"] == self.WORKOUT_TYPE_INTERVAL:
+                ElmntTree.SubElement(workout_field, "IntervalsT", self.process_interval_block(block_dict))
         # output the file
-        E.ElementTree(workout_file).write(output_filename, "utf-8")
-        return E.tostring(workout_file)
+        output_str = self.add_newlines_to_xml_string(ElmntTree.tostring(workout_file))
+        with open(output_filename, "w") as f:
+            f.write(output_str)
+        return output_str
+
+    @staticmethod
+    def add_newlines_to_xml_string(input_str):
+        regex = r"((<workout_file>)|(<\/.*?>)|(<\w*?\s\/>))"
+        p = re.compile(regex)
+        return p.sub(r'\g<1>\n', input_str.decode("UTF-8"))
