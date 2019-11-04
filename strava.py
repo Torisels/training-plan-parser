@@ -9,6 +9,7 @@ import pytz
 class StravaAPI:
     ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
     ACTIVITIES_URL_WEB = "https://www.strava.com/activities/"
+    ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
 
     def __init__(self, credentials_path, format_string="%d/%m/%Y", token=None):
         self.credentials_path = credentials_path
@@ -66,3 +67,9 @@ class StravaAPI:
                 return dict(before=int(date_before.timestamp()), after=int(date_after.timestamp()))
             except ValueError:
                 return None
+
+    @staticmethod
+    def check_token_validity(token):
+        response = requests.get(StravaAPI.ATHLETE_URL,
+                                headers={'Authorization': f'Bearer {token}'})
+        return response.status_code == 200
