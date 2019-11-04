@@ -5,3 +5,4 @@ venv
 training.xlsx
 config.py
 *.zwo
+strava_credentials.json

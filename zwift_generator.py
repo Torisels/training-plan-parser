@@ -5,7 +5,6 @@ import re
 import pathlib
 
 
-
 class CadenceModes(enum.Enum):
     Lower = 1
     Higher = 2
