@@ -4,6 +4,7 @@ import json
 import datetime
 import urllib.parse
 import pytz
+from oauth2 import StravaOAuth
 
 
 class StravaAPI:
@@ -18,12 +19,19 @@ class StravaAPI:
         if os.path.exists(credentials_path) is False:
             raise InterruptedError("Please provide valid credentials' file path!")
         if self.token is not None:
-            self.get_credentials()
+            if self.get_credentials() is False:
+                oa = StravaOAuth(self.credentials_path)
+                if oa.check_credentials() is False:
+                    raise Exception("Couldn't log in to Strava")
 
     def get_credentials(self):
         with open(self.credentials_path, "r") as f:
             data = json.load(f)
-            self.token = data["access_token"]
+            try:
+                self.token = data["access_token"]
+            except KeyError:
+                print("Please provide valid credentials file!")
+                return False
 
     def list_all_activities(self):
         response = requests.get(self.ACTIVITIES_URL,
