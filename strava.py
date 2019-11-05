@@ -46,16 +46,11 @@ class StravaAPI:
         :rtype: dict from json
         :type interval_start: datetime.datetime
         :type interval_end: datetime.datetime
-        :type format_string: str
         """
         timestamp_start = interval_start.timestamp()
         timestamp_end = interval_end.timestamp()
         url_params_dict = dict(after=timestamp_start, before=timestamp_end)
         return self.__call_activities(url_params_dict)
-
-    def get_activity_urls_in_specific_interval(self, interval_start, interval_end, format_string=None):
-        ret = list()
-        activities_dict = self.list_all_activities_in_specific_interval(interval_start, interval_end)
 
     def __call_activities(self, params_dict=None):
         url = self.ACTIVITIES_URL
