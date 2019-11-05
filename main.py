@@ -1,7 +1,3 @@
-# import pandas as pd
-# from pandas import ExcelWriter
-# from pandas import ExcelFile
-# from datetime import date
 import re
 import pathlib
 import os.path
@@ -45,12 +41,7 @@ ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
 #
 #
 if __name__ == '__main__':
-    zwift_gen = ZG(workout_type=ZG.WORKOUT_TYPE_STEADY, zwift_path=ZWIFT_PATH)
-    print(zwift_gen.generate_workout_file(ZWIFT_PATH + OUTPUT_FILENAME, WORKOUT_NAME, PARAMETERS_DICT_LIST))
-    # regex = r"((<workout_file>)|(<\/.*?>)|(<\w*?\s\/>))"
-    #
-    # test_str = "<workout_file><author>Gustaw D.</author><name>Test_String</name><description /><sportType>bike</sportType><tags><tag name=\"Created by Python generator by @Torisels\" /></tags><workout><SteadyState Cadence=\"92\" Duration=\"1200\" Pace=\"0\" Power=\"0.6\" /></workout></workout_file>"
-    # p = re.compile(regex)
-    # print(p.sub(r'\g<1>\n', test_str))
-    # path = pathlib.Path(ZWIFT_PATH)
-    # print(path.is_dir())
+    from strava import StravaAPI
+
+    Strava = StravaAPI("strava_credentials.json")
+    print(Strava.get_activity_link_for_day(StravaAPI.datetime_from_string("02/11/2019")))

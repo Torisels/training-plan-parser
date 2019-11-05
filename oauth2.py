@@ -8,7 +8,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import requests
 import json
 import os.path
-from strava import StravaAPI
+import strava
+
 code = None
 
 
@@ -42,7 +43,7 @@ class StravaOAuth:
         if os.path.isfile(self.credentials_path):
             with open(self.credentials_path, "r") as f:
                 credentials = json.load(f)
-                if StravaAPI.check_token_validity(credentials["access_token"]) is True:
+                if strava.StravaAPI.check_token_validity(credentials["access_token"]) is True:
                     return True
         # obtain access_token by using refresh_token
         if credentials is not None:
@@ -61,9 +62,9 @@ class StravaOAuth:
     def prepare_url(self):
         url = ''.join([self.BASE_URL, "?"])
 
-        vars = {"client_id": self.CLIENT_ID, "redirect_uri": self.redirect_url, "response_type": self.RESPONSE_TYPE,
-                "approval_prompt": self.APPROVAL_PROMPT, "scope": self.SCOPE}
-        return ''.join([url, urllib.parse.urlencode(vars)])
+        parameters = {"client_id": self.CLIENT_ID, "redirect_uri": self.redirect_url,
+                      "response_type": self.RESPONSE_TYPE, "approval_prompt": self.APPROVAL_PROMPT, "scope": self.SCOPE}
+        return ''.join([url, urllib.parse.urlencode(parameters)])
 
     def authorize_by_oauth(self):
         webbrowser.open(self.prepare_url())
@@ -110,6 +111,3 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.server.stop = True
 
 
-if __name__ == "__main__":
-    OA = StravaOAuth("strava_credentials.json")
-    print(OA.check_credentials())
