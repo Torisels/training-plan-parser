@@ -3,7 +3,8 @@ import pathlib
 import os.path
 from os import path
 from zwift_generator import ZwiftGenerator as ZG
-
+from google_sheet_handler import SheetHandler
+from timeit import default_timer as timer
 #
 # #Test workout generator
 OUTPUT_FILENAME = "sat_test.zwo"
@@ -43,5 +44,17 @@ ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
 if __name__ == '__main__':
     from strava import StravaAPI
 
-    Strava = StravaAPI("strava_credentials.json")
-    print(Strava.get_activity_link_for_day(StravaAPI.datetime_from_string("02/11/2019")))
+    # start = timer()
+    # Strava = StravaAPI("strava_credentials.json")
+    result = Strava.get_activities_links(["10/08/2019", "10/09/2019", "10/10/2019", "10/11/2019", "10/12/2019"],
+    #                                      "%m/%d/%Y")
+    # end = timer()
+    # print(end-start)
+    # print(result)
+    import datetime
+
+    Sh = SheetHandler("credentials.json")
+
+    dt = datetime.datetime.strptime("10/15/19", "%m/%d/%y")
+
+    print(Sh.get_training_for_day(datetime.datetime.today()))

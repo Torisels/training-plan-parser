@@ -5,13 +5,14 @@ import datetime
 import urllib.parse
 import pytz
 import oauth2
+from timeit import default_timer as timer
 
 
 class StravaAPI:
     ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
     ACTIVITIES_URL_WEB = "https://www.strava.com/activities/"
     ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
-    DATE_STRING_FORMAT = "%Y-%m-%d"
+    DATE_STRING_FORMAT_STRAVA = "%Y-%m-%d"
 
     def __init__(self, credentials_path, format_string="%d/%m/%Y", token=None):
         self.credentials_path = credentials_path
@@ -37,20 +38,49 @@ class StravaAPI:
                 print("Please provide valid credentials file!")
                 return False
 
-    def list_all_activities(self):
-        return self.call_strava_api_by_get(self.ACTIVITIES_URL)
-
-    def list_all_activities_in_specific_interval(self, interval_start, interval_end):
+    def get_all_activities(self, interval_start=None, interval_end=None):
         """
         :param interval_end:
         :rtype: dict from json
         :type interval_start: datetime.datetime
         :type interval_end: datetime.datetime
         """
+
+        if interval_start is None and interval_end is None:
+            return self.call_strava_api_by_get(self.ACTIVITIES_URL)
+
         timestamp_start = interval_start.timestamp()
         timestamp_end = interval_end.timestamp()
         url_params_dict = dict(after=timestamp_start, before=timestamp_end)
+
         return self.__call_activities(url_params_dict)
+
+    def get_activities_links(self, list_of_dates_strs, format_str):
+        st = timer()
+        date_times = [self.datetime_from_string(x, format_str) for x in list_of_dates_strs]
+        date_times.sort()
+        date_start = date_times[0] - datetime.timedelta(days=1)  # first element of list
+        date_end = date_times[-1] + datetime.timedelta(days=1)  # last element of list
+
+        activities = self.get_all_activities(date_start, date_end)
+        new_activities = sorted(
+            [{"id": activity["id"],
+              "date": self.datetime_from_string(activity['start_date'].split("T")[0], self.DATE_STRING_FORMAT_STRAVA)}
+             for activity in activities],
+            key=lambda x: x["date"])
+
+        return_l = []
+
+        for date_time in date_times:
+            for activity in new_activities:
+                if date_time < activity['date']:
+                    break
+                if activity['date'] == date_time:
+                    return_l.append({self.date_time_to_string(date_time, format_str): self.ACTIVITIES_URL_WEB + str(
+                        activity['id'])})
+                    new_activities.remove(activity)
+                    break
+        return return_l
 
     def __call_activities(self, params_dict=None):
         url = self.ACTIVITIES_URL
@@ -62,10 +92,12 @@ class StravaAPI:
     def get_activity_id_for_day(self, date_time):
         dt_start = date_time - datetime.timedelta(days=1)
         dt_end = date_time + datetime.timedelta(days=1)
-        result = self.list_all_activities_in_specific_interval(dt_start, dt_end)
-        proper_date = self.datetime_to_strava_format(date_time)
-        for item in result:
-            if item['start_date'].split("T")[0] == proper_date:
+        activities = self.get_all_activities(dt_start, dt_end)
+        return self.find_activity_id(activities, date_time)
+
+    def find_activity_id(self, activities, date_time):
+        for item in activities:
+            if item['start_date'].split("T")[0] == self.datetime_to_strava_format(date_time):
                 return str(item['id'])
         return None
 
@@ -73,6 +105,7 @@ class StravaAPI:
         return ''.join([self.ACTIVITIES_URL_WEB, self.get_activity_id_for_day(date_time)])
 
     def call_strava_api_by_get(self, url):
+        # start = timer()
         """
         This function returns dict for successful call to API or None if status code != 200
 
@@ -80,6 +113,8 @@ class StravaAPI:
         :rtype: dict
         """
         response = requests.get(url, headers={'Authorization': f'Bearer {self.token}'})
+        # end = timer()
+        # print(end - start)
         if response.status_code != 200:
             return None
         return json.loads(response.content.decode("UTF-8"))
@@ -95,6 +130,10 @@ class StravaAPI:
         return datetime.datetime.strptime(d_str, f_str)
 
     @staticmethod
+    def date_time_to_string(dt: datetime, format: str):
+        return dt.strftime(format)
+
+    @staticmethod
     def datetime_to_timestamp(date_string, format_string):
         return datetime.datetime.strptime(date_string, format_string).timestamp()
 
@@ -105,7 +144,7 @@ class StravaAPI:
         :type date: datetime.datetime
         :rtype: str
         """
-        return date.strftime("%Y-%m-%d")
+        return date.strftime(StravaAPI.DATE_STRING_FORMAT_STRAVA)
 
     @staticmethod
     def strava_date_to_date_string(strava_date, date_format):
@@ -115,7 +154,7 @@ class StravaAPI:
         :param date_format: blablabla
         :type strava_date: str
         """
-        d = datetime.datetime.strptime(strava_date, StravaAPI.DATE_STRING_FORMAT)
+        d = datetime.datetime.strptime(strava_date, StravaAPI.DATE_STRING_FORMAT_STRAVA)
         return d.strftime(date_format)
 
     @staticmethod
@@ -134,6 +173,10 @@ class StravaAPI:
 
     @staticmethod
     def check_token_validity(token):
+        start = timer()
         response = requests.get(StravaAPI.ATHLETE_URL,
                                 headers={'Authorization': f'Bearer {token}'})
+        end = timer()
+        diff = end - start
+        print(f"Call to token took {diff}s")
         return response.status_code == 200
