@@ -2,6 +2,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import config
 from datetime import datetime as dt
+from datetime import timedelta
 from config import google_sheets_config as cfg
 
 # In order to work correctly, the user has to grant access for admin in the document sharing.
@@ -34,7 +35,7 @@ class SheetHandler:
     def calculate_index(self, date_time):
         time_delta = date_time - self.first_date
         days = time_delta.days
-        if days > 0:
+        if days >= 0:
             return self.DATE_FIRST_ROW_INDEX + days
         return None
 
@@ -50,27 +51,23 @@ class SheetHandler:
     def get_date_by_index(self, index):
         return self.get_cell_value(index, self.DATE_COLUMN_INDEX)
 
+    def get_dates_strings(self, date_time_start, date_time_end):
+        """
+
+        :type date_time_start: datetime.datetime
+        """
+        date = date_time_start
+        ret_list = list()
+        while date <= date_time_end:
+            ret_list.append(date)
+            date += timedelta(days=1)
+        return ret_list
+
     def get_training_for_day(self, date_time):
         row_index = self.calculate_index(date_time)
         return self.get_cell_value(row_index, self.TRAINING_COL_INDEX)
 
-    # def get_data():
-    #     sheet = client.open_by_key("1VFaVzCuio0jDkXGsPs8Qkdm3oswGwqPPnryoffVsvpM").get_worksheet(1)
-    #     data = sheet.get_all_records()  # Get a list of all records
-    #     filtered_items = list()
-    #     for d in data:
-    #         new_item = dict(date=d["data"], training=d["1"], length=d["ob. Specjalistyczny"])
-    #         filtered_items.append(new_item)
-    #     return filtered_items
-
-    # def get_training_for_specific_date(training_data, date_string="today", format_string="%d/%m/%Y"):
-    #     date_time = None
-    #     if date_string is not "today":
-    #         try:
-    #             date_time = dt.strptime(date_string, format_string)
-    #         except ValueError:
-    #             return None
-    #
-    #     date_time = dt.today() if date_time is None else date_time
-    #     pattern = date_time.strftime("%m/%d/%y")
-    #     return list(filter(lambda item: item["date"] == pattern, training_data))[0]
+    def update_strava_link(self, date_time, link, time_mins):
+        index = self.calculate_index(date_time)
+        self.sheet.update_acell(f"P{index}", link)
+        self.sheet.update_acell(f"Q{index}", time_mins)

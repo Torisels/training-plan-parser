@@ -55,9 +55,8 @@ class StravaAPI:
 
         return self.__call_activities(url_params_dict)
 
-    def get_activities_links(self, list_of_dates_strs, format_str):
-        st = timer()
-        date_times = [self.datetime_from_string(x, format_str) for x in list_of_dates_strs]
+    def get_activities_links(self, list_of_date_times):
+        date_times = list_of_date_times
         date_times.sort()
         date_start = date_times[0] - datetime.timedelta(days=1)  # first element of list
         date_end = date_times[-1] + datetime.timedelta(days=1)  # last element of list
@@ -65,7 +64,8 @@ class StravaAPI:
         activities = self.get_all_activities(date_start, date_end)
         new_activities = sorted(
             [{"id": activity["id"],
-              "date": self.datetime_from_string(activity['start_date'].split("T")[0], self.DATE_STRING_FORMAT_STRAVA)}
+              "date": self.datetime_from_string(activity['start_date'].split("T")[0], self.DATE_STRING_FORMAT_STRAVA),
+              "length": activity["moving_time"]}
              for activity in activities],
             key=lambda x: x["date"])
 
@@ -76,8 +76,8 @@ class StravaAPI:
                 if date_time < activity['date']:
                     break
                 if activity['date'] == date_time:
-                    return_l.append({self.date_time_to_string(date_time, format_str): self.ACTIVITIES_URL_WEB + str(
-                        activity['id'])})
+                    return_l.append({date_time: [self.ACTIVITIES_URL_WEB + str(
+                        activity['id']), int(activity["length"]) // 60]})
                     new_activities.remove(activity)
                     break
         return return_l
@@ -98,7 +98,7 @@ class StravaAPI:
     def find_activity_id(self, activities, date_time):
         for item in activities:
             if item['start_date'].split("T")[0] == self.datetime_to_strava_format(date_time):
-                return str(item['id'])
+                return [''.join([self.ACTIVITIES_URL_WEB, str(item['id'])]), int(item["moving_time"]) // 60]
         return None
 
     def get_activity_link_for_day(self, date_time):
@@ -151,7 +151,7 @@ class StravaAPI:
         """
 
         :rtype: str
-        :param date_format: blablabla
+        :param date_format:
         :type strava_date: str
         """
         d = datetime.datetime.strptime(strava_date, StravaAPI.DATE_STRING_FORMAT_STRAVA)
@@ -173,10 +173,6 @@ class StravaAPI:
 
     @staticmethod
     def check_token_validity(token):
-        start = timer()
         response = requests.get(StravaAPI.ATHLETE_URL,
                                 headers={'Authorization': f'Bearer {token}'})
-        end = timer()
-        diff = end - start
-        print(f"Call to token took {diff}s")
         return response.status_code == 200
