@@ -15,7 +15,7 @@ class CadenceModes(enum.Enum):
 class ZwiftGenerator:
     WORKOUT_TYPE_INTERVAL = 'Intervals'
     WORKOUT_TYPE_STEADY = 'Steady'
-    PACE = "0"
+    # PACE = "1122314923"
     OVER_UNDER = "1"
     AUTHOR = "Gustaw D."
     SPORT_TYPE = "bike"
@@ -30,7 +30,9 @@ class ZwiftGenerator:
     def check_if_path_exists(self):
         return pathlib.Path(self.zwift_path).is_dir()
 
-    def handle_cadence(self, cadence_str, mode):
+    def handle_cadence(self, cadence_str, mode=None):
+        if cadence_str == "0":
+            return None
         if mode is None:
             mode = self.default_cadence_mode
         if "-" in cadence_str:
@@ -44,35 +46,52 @@ class ZwiftGenerator:
             elif mode is CadenceModes.Round_Floor:
                 return (lower + higher) // 2
             return math.ceil((lower + higher) / 2)
-        return int(cadence_str)
+        return cadence_str
 
-    def process_steady_block(self, input_dict):
-        ret_dict = dict(Duration=str(input_dict["Duration"]), Power=input_dict["Power"], Pace=self.PACE)
-        try:
-            cadence = input_dict["Cadence"]
-            cadence_mode = None
-            if "Cadence_mode" in input_dict:
-                cadence_mode = input_dict["Cadence_mode"]
-            ret_dict["Cadence"] = str(self.handle_cadence(cadence, cadence_mode))
-        except KeyError:
-            print("No cadence in still training")
-        return ret_dict
+    def process_block(self, params):
+        # times = 0: duration[s], power [%FTP], cadence [RPM]
+        # times > 0: duration_0[s], power_0 [%FTP], cadence_0 [RPM], duration_1[s], power_1 [%FTP], cadence_1 [RPM]
+        times = params[0]
+        result = {}
+        if times == "0":  # steady routine
+            duration = params[1]
+            power = params[2]
+            result.update({"Duration": duration, "Power": power})
+            cadence = self.handle_cadence(params[3])
+            if cadence:
+                result["Cadence"] = str(cadence)
+            workout_type = "SteadyState"
+        else:  # interval routine
+            duration_0 = params[1]
+            power_0 = params[2]
+            cadence_0 = self.handle_cadence(params[3])
+            duration_1 = params[4]
+            power_1 = params[5]
+            cadence_1 = self.handle_cadence(params[6])
+            result.update({"Repeat": times, "OnDuration": duration_0, "OnPower": power_0, "OffDuration": duration_1,
+                           "OffPower": power_1, "OverUnder": self.OVER_UNDER})
+            if cadence_0:
+                result["Cadence"] = str(cadence_0)
+            if cadence_1:
+                result["CadenceResting"] = str(cadence_1)
+            workout_type = "IntervalsT"
+        return workout_type, result
 
-    def process_interval_block(self, input_dict):
-        # Repeat, First interval duration, Second interval duration, FI power, SI power, FI Cadence, SI Cadence
-        return_dict = dict(Repeat=input_dict["Repeat"], OnDuration=input_dict["F_Duration"],
-                           OffDuration=input_dict["S_Duration"],
-                           OnPower=input_dict["F_Power"], OffPower=input_dict["S_Power"],
-                           Pace=self.PACE, OverUnder=self.OVER_UNDER)
-
-        f_cadence_mode = input_dict["F_Cadence_Mode"] if "F_Cadence_Mode" in input_dict else None
-        s_cadence_mode = input_dict["S_Cadence_Mode"] if "S_Cadence_Mode" in input_dict else None
-
-        if "F_Cadence" in input_dict:
-            return_dict["Cadence"] = str(self.handle_cadence(input_dict["F_Cadence"], f_cadence_mode))
-        if "S_Cadence" in input_dict:
-            return_dict["CadenceResting"] = str(self.handle_cadence(input_dict["S_Cadence"], s_cadence_mode))
-        return return_dict
+    # def process_interval_block(self, input_dict):
+    #     # Repeat, First interval duration, Second interval duration, FI power, SI power, FI Cadence, SI Cadence
+    #     return_dict = dict(Repeat=input_dict["Repeat"], OnDuration=input_dict["F_Duration"],
+    #                        OffDuration=input_dict["S_Duration"],
+    #                        OnPower=input_dict["F_Power"], OffPower=input_dict["S_Power"],
+    #                        Pace=self.PACE, OverUnder=self.OVER_UNDER)
+    #
+    #     f_cadence_mode = input_dict["F_Cadence_Mode"] if "F_Cadence_Mode" in input_dict else None
+    #     s_cadence_mode = input_dict["S_Cadence_Mode"] if "S_Cadence_Mode" in input_dict else None
+    #
+    #     if "F_Cadence" in input_dict:
+    #         return_dict["Cadence"] = str(self.handle_cadence(input_dict["F_Cadence"], f_cadence_mode))
+    #     if "S_Cadence" in input_dict:
+    #         return_dict["CadenceResting"] = str(self.handle_cadence(input_dict["S_Cadence"], s_cadence_mode))
+    #     return return_dict
 
     def generate_workout_file(self, output_filename, workout_name, workout_dicts, description="",
                               custom_tags_dict=None):
@@ -103,12 +122,9 @@ class ZwiftGenerator:
 
         workout_field = ElmntTree.SubElement(workout_file, "workout")
 
-        for block_dict in workout_dicts:
-            if block_dict["type"] == self.WORKOUT_TYPE_STEADY:
-                ElmntTree.SubElement(workout_field, "SteadyState",
-                                     self.process_steady_block(block_dict))
-            elif block_dict["type"] == self.WORKOUT_TYPE_INTERVAL:
-                ElmntTree.SubElement(workout_field, "IntervalsT", self.process_interval_block(block_dict))
+        for block in workout_dicts:
+            workout_type, params = self.process_block(block)
+            ElmntTree.SubElement(workout_field, workout_type, params)
         # output the file
         output_str = self.add_newlines_to_xml_string(ElmntTree.tostring(workout_file))
         with open(output_filename, "w") as f:

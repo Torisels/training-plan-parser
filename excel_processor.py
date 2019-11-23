@@ -1,11 +1,11 @@
 import re
 
 
-def process_training_string(input_string):
+def determine_type(input_string):
     # Find if we have to deal with intervals
     match_dict = None
-    if re.search(r"odp\.?\b|odpoczynek\b", input_string) is not None:
-        print("Intervals")
+    if re.search(r"\dx\d.+?odp\.?\b|odpoczynek\b", input_string) is not None:
+        return "intervals"
 
     else:
         print("Still training")
@@ -15,7 +15,7 @@ def process_training_string(input_string):
         match_dict = match.groupdict()
         match_dict["type"] = "SteadyState"
 
-    return match_dict
+    return "steady"
 
 
 def handle_intervals(input_string):

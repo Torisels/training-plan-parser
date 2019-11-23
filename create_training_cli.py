@@ -1,27 +1,37 @@
 # cli.py
 import click
+import datetime
 from zwift_generator import ZwiftGenerator
-
+from google_sheet_handler import SheetHandler
+import excel_processor as proc
 ZWIFT_PATH = "C:/Users/Gustaw/Documents/Zwift/Workouts/875923/"
 
 
 @click.command()
-@click.argument('type')
+@click.argument('workout_type')
 @click.argument('name')
 @click.option('--times', '-t', default=0)
 @click.option('--filename', '-fn', default=0)
-def main(type, name, times, filename):
-    click.echo("{}, {}".format(type, times))
-    type = str.lower(type)
+@click.option('--date', '-d', default=0)
+def main(workout_type, name, times, filename, date):
+    Sh = SheetHandler("credentials.json")
+    if date is not 0:
+        training_string = Sh.get_training_for_day(datetime.datetime(day=24, month=11, year=2019))
+        workout_type = proc.determine_type(training_string)
+        print(f"Detected workout type is: {workout_type}")
+
+    # times = 0 => times, duration[s], power [%FTP], cadence [RPM]
+    # times > 0 => times, duration_0[s], power_0 [%FTP], cadence_0 [RPM], duration_1[s], power_1 [%FTP], cadence_1 [RPM]
+    workout_type = str.lower(workout_type)
     if filename is 0:
         filename = name + ".zwo"
 
-    if type == "steady":
+    if workout_type == "steady":
         generator = ZwiftGenerator(ZwiftGenerator.WORKOUT_TYPE_STEADY, ZWIFT_PATH)
-        duration, power, cadence = input_routine("STEADY segment: ")
-        parameters = [dict(type=ZwiftGenerator.WORKOUT_TYPE_STEADY, Duration=duration, Power=power, Cadence=cadence)]
-        generator.generate_workout_file(filename, name, parameters)
-    elif type == "intervals" or type == "int":
+        params = list(input_routine("STEADY segment: "))
+        generator.generate_workout_file(filename, name, [["0"] + params])
+    elif workout_type == "intervals" or workout_type == "int":
+        print("TBD")
         generator = ZwiftGenerator(ZwiftGenerator.WORKOUT_TYPE_INTERVAL, ZWIFT_PATH)
 
     else:
@@ -53,10 +63,10 @@ def input_routine(header_text):
         seconds = int(seconds)
         seconds += minutes * 60
     else:
-        seconds = int(duration)
+        seconds = int(duration) * 60
 
     power = int(power) / 100
-    cadence = 0 if len(cadence) == 0 else int(cadence)
+    cadence = 0 if len(cadence) == 0 else cadence
 
     return str(seconds), str(power), str(cadence)
 
