@@ -47,7 +47,7 @@ class ZwiftGenerator:
         return int(cadence_str)
 
     def process_steady_block(self, input_dict):
-        ret_dict = dict(Duration=input_dict["Duration"], Power=input_dict["Power"], Pace=self.PACE)
+        ret_dict = dict(Duration=str(input_dict["Duration"]), Power=input_dict["Power"], Pace=self.PACE)
         try:
             cadence = input_dict["Cadence"]
             cadence_mode = None
